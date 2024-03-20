@@ -1,0 +1,103 @@
+base_tunnel:
+  eye_fov:
+    fov: 100
+    fov_shift: 57
+  speed_gain: 0.7
+  wall_length: 4.5
+  wall_model: walls.egg
+  wall_spacing: 9
+card:
+  position:
+  - 0.9
+  - 0.9
+  size:
+  - 0.2
+  - 0.2
+daqChannel:
+  spout1:
+    chan: Dev1/ai10
+    max_value: 10
+    min_value: 0
+    threshold: 0.07
+  valve1: Dev1/port0/line1
+flip_tunnel:
+  assisted_goals:
+  - - 30
+    - 39
+  - - 138
+    - 147
+  - - 84
+    - 93
+  - - 66
+    - 75
+  goals:
+  - - 30
+    - 39
+  - - 138
+    - 147
+  - - 84
+    - 93
+  - - 66
+    - 75
+  io_module: nidaq
+  length: 182
+  lock_corridor_reward: false
+  manual_reward_with_space: true
+  margin_start: 9
+  neutral_texture: grey.png
+  no_reward_cue: true
+  reward_length:
+    assist: 0.2
+    correct: 0.3
+    manual: 0.2
+    wrong: 0.3
+  sleep_time: 0
+  stimulus_onset: 12
+inputs:
+  speed:
+    chan: Dev1/ctr0
+    diameter: 0.197
+    error_value: 4000000000
+    pulses_per_rev: 1000
+    threshold: 0.001
+logger:
+  box_number: '15'
+  date_time: '2024-03-09 16:48:23.723324'
+  experiment_start_time: '16:48'
+  foldername: D:\2024\sandra\SR_1136995\240309
+monitor:
+  dual_monitor: true
+  monitor1:
+    width: 1366
+  monitor2:
+    height: 1080
+    width: 1920
+  monitor3:
+    height: 1080
+    width: 1920
+outputs: {}
+sequence_task:
+  protocol: protocol_1_lm10
+  rulename: sequence
+walls_sequence:
+- random_dots.png
+- logs.png
+- random_dots.png
+- grating1.jpg
+- random_dots.png
+- tiles.png
+- random_dots.png
+- grass.png
+- random_dots.png
+- big_light_rectangles.png
+- random_dots.png
+- honeycomb.png
+- random_dots.png
+- leaves.png
+- random_dots.png
+- waves.png
+- random_dots.png
+- bark.png
+- random_dots.png
+- big_light_circles.png
+- random_dots.png
