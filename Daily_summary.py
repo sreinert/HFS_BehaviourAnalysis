@@ -9,16 +9,18 @@ import yaml
 from scipy.interpolate import make_interp_spline
 
 #specify what data to load
-mouse = 'SR_1136984'
-date = '240318'
+mouse = 'SR_1136986'
+# mouse = 'MN_1136498'
+date = '240331'
+# date = '20240331'
 data_dir = '/Volumes/mrsic_flogel/public/projects/SaRe_20240219_hfs/training_data/v1/' + mouse + '/' + date
 path = data_dir + '/position_log.csv'
 data = pd.read_csv(path)
-print(data.shape)
+# print(data.shape)
 
 # data : table with Time, Position, Event, TotalRunDistance
 position_idx = np.where(data['Position'] > -1)[0]
-position = data['Position'][position_idx].values - 9
+position = data['Position'][position_idx].values
 times = data['Time'][position_idx].values
 lick_root_idx = np.where(data['Event'] == 'challenged')[0]
 lick_idx = data['Index'][lick_root_idx].values
@@ -29,6 +31,10 @@ reward_idx = data['Index'][reward_root_idx].values
 reward_time = times[reward_idx]
 reward_delta_time = np.diff(reward_time)
 reward_position = position[reward_idx]
+assistant_reward_root_idx = np.where(data['Event'] == 'assist-rewarded')[0]
+assistant_reward_idx = data['Index'][assistant_reward_root_idx].values
+assistant_reward_time = times[assistant_reward_idx]
+assistant_reward_position = position[assistant_reward_idx]
 manual_reward_root_idx = np.where(data['Event'] == 'manually-rewarded')[0]
 manual_reward_idx = data['Index'][manual_reward_root_idx].values
 manual_reward_time = times[manual_reward_idx]
@@ -39,13 +45,23 @@ with open(str(data_dir + '/config.yaml'), 'r') as fd:
     options = yaml.load(fd, Loader=yaml.SafeLoader)    
 goals = np.array(options['flip_tunnel']['goals']) - np.array(options['flip_tunnel']['margin_start'])
 # goals = [[12, 21], [138, 147], [84, 93], [66, 75]]
-# landmarks = np.array(options['flip_tunnel']['landmarks']) - 9
-landmarks = [[12, 21], [30, 39], [48, 57], [66, 75], [84, 93], [102, 111], [120, 129], [138, 147], [156, 164], [173, 182]]
+# landmarks = np.array(options['flip_tunnel']['landmarks']) - np.array(options['flip_tunnel']['margin_start'])
+landmarks = [[3, 12], [21, 30], [39, 48], [57, 66], [75, 84], [93, 102], [111, 120], [129, 138], [147, 156], [165, 173]]
 
-print(position.shape)
-print(lick_idx.shape)
-print(reward_idx.shape)
-print(goals)
+#start by counting laps
+total_dist = data['TotalRunDistance'][position_idx].values - 9
+num_laps = np.ceil([total_dist.max()/position.max()])
+#convert to int
+num_laps = num_laps.astype(int)
+# print(num_laps)
+
+#print a summary of the session containing how many laps were completed, how many rewards were given, how many licks were made, and how many manual rewards were given
+print('Session Summary:')
+print('Laps completed:', num_laps[0])
+print('Rewards given:', len(reward_idx))
+print('Assistant rewards given:', len(assistant_reward_idx))
+print('Licks made:', len(lick_idx))
+print('Manual rewards given:', len(manual_reward_idx))
 
 # fig, ax = plt.subplots(figsize=(30, 2), dpi=100)
 # ax.autoscale(enable=True, axis='both')
@@ -83,18 +99,12 @@ for goal in goals:
 plt.ylim(-100, 1000)
 # plt.show()
 
-#start by counting laps
-total_dist = data['TotalRunDistance'][position_idx].values - 9
-num_laps = np.ceil([total_dist.max()/position.max()])
-#convert to int
-num_laps = num_laps.astype(int)
-print(num_laps)
 
 # create a matrix of licks per lap per position bin
 num_bins = 60
 num_laps = num_laps[0]
 licks_per_bin = np.zeros((num_laps, num_bins))
-bin_edges = np.linspace(0, 180, num_bins+1)
+bin_edges = np.linspace(0, position.max(), num_bins+1)
 for i in range(num_laps):
     lap_idx = np.where((total_dist >= i*position.max()) & (total_dist < (i+1)*position.max()))[0]
     #find overlapping values in lick_idx and lap_idx
@@ -104,11 +114,11 @@ for i in range(num_laps):
 
 #plot this matrix as an image
 vmin=0
-vmax=50
+vmax=20
 fig, ax = plt.subplots(figsize=(30, 5), dpi=100)
 ax.imshow(licks_per_bin, aspect='auto', vmin=vmin, vmax=vmax)
-ax.set_xticks([0, 20, 40, 60])
-ax.set_xticklabels([0, 60, 120, 180])
+# ax.set_xticks([0, 20, 40, 60])
+# ax.set_xticklabels([0, 60, 120, 180])
 ax.set_xlabel('Position in the \n virtual corridor (0~180)')
 ax.set_ylabel('Lap number')
 #show the goals as grey bars
@@ -135,7 +145,9 @@ for i in range(num_laps):
 #plot this matrix as an image
 fig, ax = plt.subplots(figsize=(30, 2), dpi=100)
 ax.imshow(licks_per_landmark, aspect='auto')
-ax.set_ylabel('Goal zone')
+ax.set_yticks(range(len(landmarks)))
+ax.set_yticklabels(range(0, len(landmarks)))
+ax.set_ylabel('Landmarks')
 ax.set_xlabel('Lap number')
 
 plt.tight_layout()
@@ -146,8 +158,8 @@ licks_per_landmark_percentage = np.sum(licks_per_landmark, axis=1)/num_laps*100
 fig, ax = plt.subplots(figsize=(5, 2), dpi=100)
 ax.bar(range(len(landmarks)), licks_per_landmark_percentage)
 ax.set_xticks(range(len(landmarks)))
-ax.set_xticklabels(range(1, len(landmarks)+1))
-ax.set_xlabel('Goal zone')
+ax.set_xticklabels(range(0, len(landmarks)))
+ax.set_xlabel('Landmarks')
 ax.set_ylabel('Percentage of laps with a lick')
 plt.tight_layout()
 # plt.show()
@@ -170,9 +182,9 @@ transition_matrix = np.zeros((len(landmarks), len(landmarks)))
 
 for i in range(len(landmarks)):
     lm_licks = np.where(lm_sequence == i)[0]
-    print(lm_licks)
+    # print(lm_licks)
     following_licks = lm_sequence[lm_licks[:-1]+1]
-    print(following_licks)
+    # print(following_licks)
     #calculate the transition matrix
     for j in range(len(landmarks)):
         transition_matrix[i,j] = np.sum(following_licks == j)
@@ -189,36 +201,31 @@ for i in range(len(landmarks)):
 # plt.show()
 
 #calculate the ideal transition matrix
-ideal_transition_matrix = np.zeros((len(landmarks), len(landmarks)))
-# for sequence 1
+# ideal_transition_matrix = np.zeros((len(landmarks), len(landmarks)))
+# # for sequence 1
 # ideal_transition_matrix[1,7] = 1
 # ideal_transition_matrix[7,4] = 1
 # ideal_transition_matrix[4,3] = 1
 # ideal_transition_matrix[3,1] = 1
 
 # for sequence 2
-ideal_transition_matrix[2,9] = 1
-ideal_transition_matrix[9,5] = 1
-ideal_transition_matrix[5,6] = 1
-ideal_transition_matrix[6,2] = 1
+# ideal_transition_matrix[2,9] = 1
+# ideal_transition_matrix[9,5] = 1
+# ideal_transition_matrix[5,6] = 1
+# ideal_transition_matrix[6,2] = 1
+        
+#find indices of goals in the landmarks
+goal_idx = np.array([])
+for goal in goals:
+    goal_idx = np.append(goal_idx, np.where(landmarks == goal)[0])
+goal_idx = goal_idx.astype(int)
 
-# #plot the ideal transition matrix in a subplot next to the real transition matrix
-# fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
-# cax = ax.matshow(transition_matrix, cmap='viridis')
-# fig.colorbar(cax)
-# ax.set_xlabel('Landmarks')
-# ax.set_ylabel('Landmarks')
-# ax.set_title('Real transition matrix')
-# plt.tight_layout()
-
-# ax2 = ax.twiny()
-# cax2 = ax2.matshow(ideal_transition_matrix, cmap='viridis')
-# fig.colorbar(cax2)
-# ax2.set_xlabel('Landmarks')
-# ax2.set_ylabel('Landmarks')
-# ax2.set_title('Ideal transition matrix')
-# plt.tight_layout()
-# plt.show()
+#create ideal transition matrix with only the goals
+ideal_transition_matrix = np.zeros((len(landmarks), len(landmarks)))
+for i in range(len(goal_idx)-1):
+    ideal_transition_matrix[goal_idx[i], goal_idx[i+1]] = 1
+    ideal_transition_matrix[goal_idx[i], goal_idx[i]] = 0
+ideal_transition_matrix[goal_idx[-1], goal_idx[0]] = 1
 
 #plot the ideal transition matrix in a subplot next to the real transition matrix
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(10, 5), dpi=100)
@@ -238,4 +245,35 @@ ax2.set_ylabel('Landmarks')
 ax2.set_title('Ideal transition matrix')
 
 plt.tight_layout()
+# plt.show()
+
+#create a heatmap of licks in the corridor following a reward in each goal zone
+licks_per_goal = np.zeros((len(goals), num_bins))
+for i in range(len(goals)):
+    #identify laps that contain a reward in this goal zone
+    goal_idx = np.where((reward_position >= goals[i][0]) & (reward_position <= goals[i][1]))[0]
+    for j in range(len(goal_idx)):
+        lap_idx = np.where((total_dist >= goal_idx[j]*position.max()) & (total_dist < goal_idx[j]*position.max()+position.max()))[0]
+        overlap = np.intersect1d(lick_idx, lap_idx)
+        licks_per_lap = position[overlap]
+        licks_per_goal[i] += np.histogram(licks_per_lap, bins=bin_edges)[0]
+
+#plot this matrix as an image
+vmin=0
+vmax=20
+fig, ax = plt.subplots(figsize=(30, 5), dpi=100)
+ax.imshow(licks_per_goal, aspect='auto', vmin=vmin, vmax=vmax)
+# ax.set_xticks([0, 20, 40, 60])
+# ax.set_xticklabels([0, 60, 120, 180])
+ax.set_yticks(range(len(goals)))
+ax.set_yticklabels(range(0, len(goals)))
+ax.set_xlabel('Position in the \n virtual corridor (0~180)')
+ax.set_ylabel('Goal zone')
+fig.colorbar(ax.imshow(licks_per_goal, aspect='auto', vmin=vmin, vmax=vmax))
+
+
+plt.tight_layout()
 plt.show()
+
+# a version of this transition matrix is a matrix where only landmarks are considered that gave a reward to the mouse -> i.e. the conditional probability of licking a landmark given a previous reward
+
