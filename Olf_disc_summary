@@ -1,0 +1,112 @@
+from pathlib import Path
+import numpy as np
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+import matplotlib.patches as patches
+import pandas as pd
+import sys
+import yaml
+
+#specify what data to load
+mouse = 'MN_1136993'
+date = '20240401'
+data_dir = '/Volumes/mrsic_flogel/public/projects/SaRe_20240219_hfs/training_data/v1/' + mouse + '/' + date
+path = data_dir + '/position_log.csv'
+data = pd.read_csv(path)
+with open(str(data_dir + '/config.yaml'), 'r') as fd:
+    options = yaml.load(fd, Loader=yaml.SafeLoader)   
+
+# data : table with Time, Position, Event, TotalRunDistance
+position_idx = np.where(data['Position'] > -1)[0]
+position = data['Position'][position_idx].values
+times = data['Time'][position_idx].values
+lick_root_idx = np.where(data['Event'] == 'challenged')[0]
+lick_idx = data['Index'][lick_root_idx].values
+lick_time = times[lick_idx]
+lick_position = position[lick_idx]
+reward_root_idx = np.where(data['Event'] == 'rewarded')[0]
+reward_idx = data['Index'][reward_root_idx].values
+reward_time = times[reward_idx]
+reward_delta_time = np.diff(reward_time)
+reward_position = position[reward_idx]
+assistant_reward_root_idx = np.where(data['Event'] == 'assist-rewarded')[0]
+assistant_reward_idx = data['Index'][assistant_reward_root_idx].values
+assistant_reward_time = times[assistant_reward_idx]
+assistant_reward_position = position[assistant_reward_idx]
+manual_reward_root_idx = np.where(data['Event'] == 'manually-rewarded')[0]
+manual_reward_idx = data['Index'][manual_reward_root_idx].values
+manual_reward_time = times[manual_reward_idx]
+manual_reward_position = position[manual_reward_idx]
+total_distance = data['TotalRunDistance'][position_idx].values 
+tunnel_length = options['flip_tunnel']['length']
+total_dist = data['TotalRunDistance'][position_idx].values - 9
+num_laps = np.ceil([total_dist.max()/position.max()])
+num_laps = num_laps.astype(int)
+
+goals = np.array(options['flip_tunnel']['goals']) - np.array(options['flip_tunnel']['margin_start'])
+landmarks = np.array(options['flip_tunnel']['landmarks']) - np.array(options['flip_tunnel']['margin_start'])
+
+#print a summary of the session containing how many laps were completed, how many rewards were given, how many licks were made, and how many manual rewards were given
+print('Session Summary:')
+print('Laps completed:', num_laps[0])
+print('Rewards given:', len(reward_idx))
+print('Assistant rewards given:', len(assistant_reward_idx))
+print('Licks made:', len(lick_idx))
+print('Manual rewards given:', len(manual_reward_idx))
+
+#create a matrix of licks per lap
+# create a matrix of licks per lap per position bin
+num_bins = 60
+num_laps = num_laps[0]
+licks_per_bin = np.zeros((num_laps, num_bins))
+bin_edges = np.linspace(0, 180, num_bins+1)
+for i in range(num_laps):
+    lap_idx = np.where((total_dist >= i*position.max()) & (total_dist < (i+1)*position.max()))[0]
+    #find overlapping values in lick_idx and lap_idx
+    overlap = np.intersect1d(lick_idx, lap_idx)
+    licks_per_lap = position[overlap]
+    licks_per_bin[i], _ = np.histogram(licks_per_lap, bins=bin_edges)
+
+#plot this matrix as an image
+vmin=0
+vmax=20
+fig, ax = plt.subplots(figsize=(30, 5), dpi=100)
+ax.imshow(licks_per_bin, aspect='auto', vmin=vmin, vmax=vmax)
+ax.set_xticks([0, 20, 40, 60])
+ax.set_xticklabels([0, 60, 120, 180])
+ax.set_xlabel('Position in the \n virtual corridor (0~180)')
+ax.set_ylabel('Lap number')
+#show the landmarks as grey bars
+for landmark in landmarks:
+    rectangle = patches.Rectangle((landmark[0]/180*num_bins, 0), np.diff(landmark)[0]/180*num_bins, -20, edgecolor='grey', facecolor='grey', alpha=0.8)
+    ax.add_patch(rectangle)
+#show the goals as white bars
+for goal in goals:
+    rectangle = patches.Rectangle((goal[0]/180*num_bins, 0), np.diff(goal)[0]/180*num_bins, -20, edgecolor='white', facecolor='white', alpha=1)
+    ax.add_patch(rectangle)
+#add a colorbar
+cbar = plt.colorbar(ax.imshow(licks_per_bin, aspect='auto', vmin=vmin, vmax=vmax))
+# cbar = plt.colorbar(ax.imshow(licks_per_bin, aspect='auto'))
+cbar.set_label('Number of licks')
+plt.tight_layout()
+# plt.show()
+
+#collapse the matrix to show the cumulative number of licks per bin
+cumulative_licks = np.sum(licks_per_bin, axis=0)
+fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
+ax.plot(cumulative_licks)
+ax.set_xticks([0, 20, 40, 60])
+ax.set_xticklabels([0, 60, 120, 180])
+ax.set_xlabel('Position in the \n virtual corridor (0~180)')
+ax.set_ylabel('Licks')
+#show the landmarks as grey bars
+for landmark in landmarks:
+    rectangle = patches.Rectangle((landmark[0]/180*num_bins, 0), np.diff(landmark)[0]/180*num_bins, -10, edgecolor='grey', facecolor='grey', alpha=0.8)
+    ax.add_patch(rectangle)
+#show the goals as white bars
+for goal in goals:
+    rectangle = patches.Rectangle((goal[0]/180*num_bins, 0), np.diff(goal)[0]/180*num_bins, -10, edgecolor='white', facecolor='white', alpha=0.8)
+    ax.add_patch(rectangle)
+plt.tight_layout()
+plt.show()
+
