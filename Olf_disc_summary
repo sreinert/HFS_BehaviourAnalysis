@@ -8,13 +8,13 @@ import sys
 import yaml
 
 #specify what data to load
-mouse = 'MN_1136993'
-date = '20240401'
-data_dir = '/Volumes/mrsic_flogel/public/projects/SaRe_20240219_hfs/training_data/v1/' + mouse + '/' + date
+mouse = 'SR_0000012'
+date = '240826'
+data_dir = '/Volumes/mrsic_flogel/public/projects/SaRe_20240219_hfs/training_data/v2/' + mouse + '/' + date
 path = data_dir + '/position_log.csv'
 data = pd.read_csv(path)
 with open(str(data_dir + '/config.yaml'), 'r') as fd:
-    options = yaml.load(fd, Loader=yaml.SafeLoader)   
+    options = yaml.load(fd, Loader=yaml.SafeLoader)  
 
 # data : table with Time, Position, Event, TotalRunDistance
 position_idx = np.where(data['Position'] > -1)[0]
@@ -43,8 +43,8 @@ total_dist = data['TotalRunDistance'][position_idx].values - 9
 num_laps = np.ceil([total_dist.max()/position.max()])
 num_laps = num_laps.astype(int)
 
-goals = np.array(options['flip_tunnel']['goals']) - np.array(options['flip_tunnel']['margin_start'])
-landmarks = np.array(options['flip_tunnel']['landmarks']) - np.array(options['flip_tunnel']['margin_start'])
+goals = np.array(options['flip_tunnel']['goals'])# - np.array(options['flip_tunnel']['margin_start'])
+landmarks = np.array(options['flip_tunnel']['landmarks'])# - np.array(options['flip_tunnel']['margin_start'])
 
 #print a summary of the session containing how many laps were completed, how many rewards were given, how many licks were made, and how many manual rewards were given
 print('Session Summary:')
