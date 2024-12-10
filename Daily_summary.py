@@ -18,7 +18,7 @@ tm_palette = palettes.met_brew('Greek',n=123, brew_type="continuous")
 color_scheme = wesanderson.film_palette('Grand Budapest Hotel')
 custom_cycler = cycler(color=color_scheme)
 
-
+#main function to parse position log file into behavioural parameters
 def analyze_session(mouse, date, produce_plots):
     import matplotlib.pyplot as plt
     import matplotlib.patches as patches
@@ -30,8 +30,7 @@ def analyze_session(mouse, date, produce_plots):
     path = data_dir + '/position_log.csv'
     data = pd.read_csv(path)
     
-    # process data and perform analysis
-    # data : table with Time, Position, Event, TotalRunDistance
+    # parse the individual variables from a table with Time, Position, Event, TotalRunDistance
     position_idx = np.where(data['Position'] > -1)[0]
     position = data['Position'][position_idx].values
     times = data['Time'][position_idx].values
@@ -53,13 +52,14 @@ def analyze_session(mouse, date, produce_plots):
     manual_reward_time = times[manual_reward_idx]
     manual_reward_position = position[manual_reward_idx]
 
+    #load the config file to get the goals and landmarks
     with open(str(data_dir + '/config.yaml'), 'r') as fd:
         options = yaml.load(fd, Loader=yaml.SafeLoader)    
     goals = np.array(options['flip_tunnel']['goals']) #- np.array(options['flip_tunnel']['margin_start'])
     landmarks = np.array(options['flip_tunnel']['landmarks']) #- np.array(options['flip_tunnel']['margin_start'])
     tunnel_length = options['flip_tunnel']['length']
     
-    #start by counting laps
+    #start by counting laps (repetitions of the corridor)
     total_dist = data['TotalRunDistance'][position_idx].values - np.array(options['flip_tunnel']['margin_start'])
     num_laps = np.ceil([total_dist.max()/position.max()])
     #convert to int
@@ -118,7 +118,7 @@ def analyze_session(mouse, date, produce_plots):
     hitrate = np.mean(licks_per_landmark_percentage[goal_idx])
     farate = np.mean(licks_per_landmark_percentage[np.delete(np.arange(len(landmarks)), goal_idx)])
 
-    #identify how many laps are needed to finish a sequence of goals
+    #identify how many laps are needed to finish a sequence of goals (1 2 or 3 if the sequence is 4 goals of 10 landmarks)
     laps_needed = 1
     for i in range(len(goal_idx)-1):
         if goal_idx[i+1] - goal_idx[i] < 0:
@@ -393,6 +393,7 @@ def analyze_session(mouse, date, produce_plots):
 
     return session_summary
 
+# run this on example sessions (typically 2 sessions per day)
 session_1 = analyze_session('SR_0000012', '241119', False)
 session_2 = analyze_session('SR_0000012', '241119_2', False)
 
@@ -406,49 +407,3 @@ print('Rewards given:', session_1['num_rewards'] + session_2['num_rewards'])
 print('Assistant rewards given:', session_1['num_assist_rewards'] + session_2['num_assist_rewards'])
 print('Manual rewards given:', session_1['num_manual_rewards'] + session_2['num_manual_rewards'])
 
-# # #plot the licks per lap per position bin for both sessions concatenated
-# licks_per_bin = np.concatenate((session_1['licks_per_bin'], session_2['licks_per_bin']), axis=0)
-# fig, ax = plt.subplots(figsize=(30, 5), dpi=100)
-# sns.heatmap(licks_per_bin, ax=ax, cmap=rev_hfs)
-# # ax.imshow(licks_per_bin, aspect='auto', vmin=0, vmax=20)
-# ax.set_xlabel('Position in the \n virtual corridor (0~180)')
-# ax.set_ylabel('Lap number')
-# for goal in session_1['goals']:
-#     rectangle = patches.Rectangle((goal[0]/session_1['tunnel_length']*120, -30), np.diff(goal)[0]/session_1['tunnel_length']*120, 30, edgecolor='grey', facecolor='grey', alpha=0.5)
-#     ax.add_patch(rectangle)
-# # cbar = plt.colorbar(ax.imshow(licks_per_bin, aspect='auto', vmin=0, vmax=20))
-# # cbar.set_label('Number of licks')
-# plt.tight_layout()
-
-# # plot the concatenated session 1 and session 2 sliding window hitrate and farate
-# cat_hit = np.concatenate((session_1['sliding_window_hitrate'], session_2['sliding_window_hitrate']), axis=0)
-# cat_skip = np.concatenate((session_1['sliding_window_skiprate'], session_2['sliding_window_skiprate']), axis=0)
-# cat_fa = np.concatenate((session_1['sliding_window_farate'], session_2['sliding_window_farate']), axis=0)
-# fig, ax = plt.subplots(figsize=(8, 2), dpi=100)
-# ax.set_prop_cycle(custom_cycler)
-# ax.plot(cat_hit, label='Hit rate')
-# ax.plot(cat_fa, label='False alarm rate')
-# ax.plot(cat_skip, label='Skip rate')
-# ax.set_ylim(0, 1)
-# ax.set_xlabel('Laps')
-# ax.set_ylabel('Percentage')
-# ax.legend()
-# plt.tight_layout()
-# plt.show()
-
-# #collapse the matrix to show the cumulative number of licks per bin
-# cumulative_licks = np.sum(licks_per_bin, axis=0)
-# fig, ax = plt.subplots(figsize=(10, 5), dpi=100)
-# ax.plot(cumulative_licks)
-# ax.set_xlabel('Position in the \n virtual corridor (0~180)')
-# ax.set_ylabel('Licks')
-# #show the landmarks as grey bars
-# for landmark in session_1['landmarks']:
-#     rectangle = patches.Rectangle((landmark[0]/session_1['tunnel_length']*120, 0), np.diff(landmark)[0]/session_1['tunnel_length']*120, -10, edgecolor='grey', facecolor='grey', alpha=0.8)
-#     ax.add_patch(rectangle)
-# #show the goals as white bars
-# for goal in session_1['goals']:
-#     rectangle = patches.Rectangle((goal[0]/session_1['tunnel_length']*120, 0), np.diff(goal)[0]/session_1['tunnel_length']*120, -10, edgecolor='white', facecolor='white', alpha=0.8)
-#     ax.add_patch(rectangle)
-# plt.tight_layout()
-# plt.show()
