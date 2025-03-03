@@ -6,3 +6,7 @@ Design: Mice traverse a virtual linear corridor (panda3d) by running on a treadm
 
 Data: per training session one **config.yaml** file with the settings and one **position_log.csv** containing position, licks, rewards,... 
 
+Main functions:
+Daily_summary: parses an individual session or training day for a specified mouse and date
+cohort_1_summary: contains training stage info per mouse of cohort one and can produce a learning curve per stage concatinating all relevant sessions for a mouse
+weight_analysis: pulls info from google sheet monitoring the restriction level of cohort 1 animals and relates that to engagement in task (limited so far)
