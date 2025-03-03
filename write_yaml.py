@@ -13,7 +13,7 @@ import numpy as np
 #alternatively stage 6 is the testing corridor with all landmarks in fixed order, rewards are given in a A B A B A B A B fashion (4 rewards per corridor)
 
 #a mouse specific settings file needs to be loaded and integrated into the corridor design
-mouse = 'test'
+mouse = 'TAA0000066'
 mouse_file = mouse + '.yaml'
 with open(str(mouse_file), 'r') as yaml_file:
     mouse_settings = yaml.load(yaml_file)
@@ -24,6 +24,17 @@ landmarks = {'0':'logs.png', '1':'grating1.jpg', '2':'tiles.png', '3':'big_light
 
 #define basic unit of repeat structure - stage dependent
 stage = mouse_settings['stage']
+setup = mouse_settings['setup']
+logger_name = mouse_settings['basepath'] +  mouse_settings['date']
+if setup == 1:
+    monitor1_width = 1366
+    daq_channel_3V1 = 'Dev1/port1/line2'
+    daq_channel_3V2 = 'Dev1/port2/line3'
+else:
+    monitor1_width = 1920
+    daq_channel_3V1 = 'Dev1/port1/line1'
+    daq_channel_3V2 = 'Dev1/port1/line2'
+
 if stage == 1:
     rulename = 'run-auto'
     repeat_unit = 'random_dots.png'
@@ -65,9 +76,12 @@ elif stage == 3 or stage == 4:
         collect_seq.append('random_dots.png')
         collect_seq.append('random_dots.png')
 
-    all_positions = np.arange(0, (len(collect_seq)-1)*9, 9)
-    landmark_startpositions = all_positions[5::10]+2
-    landmark_endpositions = landmark_startpositions+16
+    # all_positions = np.arange(0, (len(collect_seq)-1)*9, 9)
+    all_positions = np.arange(0, len(collect_seq)*9, 9)
+    # landmark_startpositions = all_positions[5::10]+2
+    landmark_endpositions = all_positions[7::12]+2
+    print(landmark_endpositions)
+    landmark_startpositions = landmark_endpositions-18
     landmark_full = np.zeros((len(landmark_startpositions),2))
     for p in range(len(landmark_startpositions)):
         landmark_full[p,:] = [landmark_startpositions[p], landmark_endpositions[p]]
@@ -79,6 +93,8 @@ elif stage == 3 or stage == 4:
     b.fa.set_flow_style()
     ids = ruamel.yaml.comments.CommentedSeq(collect_ids.astype(int).tolist())
     ids.fa.set_flow_style()
+    lms = ruamel.yaml.comments.CommentedSeq([collect_ids.astype(int).tolist()])
+    lms.fa.set_flow_style()
     if stage == 3:
         assisted_goals = np.zeros((len(goals),2))
         for i in range(len(goals)):
@@ -225,31 +241,18 @@ spout = ruamel.yaml.comments.CommentedMap(spout)
 spout.fa.set_flow_style()
 
 
+
 #the fixed settings of corridor design can be specified here (collected in a big dictionary)
-settings = {'texture_path': 'examples/textures/', 
-             'base_tunnel': {'speed_gain':mouse_settings['gain'],'eye_fov':{'fov':100,'fov_shift':57}, 'wall_model':'walls.egg', 'wall_length':4.5,'wall_spacing':9},
+if stage == 1 or stage == 2:
+    settings = {'texture_path': 'examples/textures/',
+                'base_tunnel': {'speed_gain':mouse_settings['gain'],'eye_fov':{'fov':100,'fov_shift':57}, 'wall_model':'walls.egg', 'wall_length':4.5,'wall_spacing':9},
              'card':{'size':size,'position':position}, 
-             'monitor':{'dual_monitor':True,'monitor1':{'width':1366},'monitor2':{'width':1920,'height':1080},'monitor3':{'width':1920,'height':1080}},
+             'monitor':{'dual_monitor':True,'monitor1':{'width':monitor1_width},'monitor2':{'width':1920,'height':1080},'monitor3':{'width':1920,'height':1080}},
              'sequence_task':{'rulename':rulename,'protocol':'olfactory_support_l1'},
-             'daqChannel':{'valve1':'Dev1/port0/line1',
-                           'spout1':spout,
-                           'odour1':'Dev1/port2/line4',
-                           'odour2':'Dev1/port0/line4',
-                           'odour3':'Dev1/port1/line7',
-                           'odour4':'Dev1/port0/line7',
-                           'odour5':'Dev1/port1/line6',
-                           'odour6':'Dev1/port0/line2',
-                           'odour7':'Dev1/port2/line5',
-                           'odour8':'Dev1/port0/line3',
-                           'odour9':'Dev1/port1/line4',
-                           'odour10':'Dev1/port0/line5',
-                           'mo1':'Dev1/port0/line0',
-                           'mo2':'Dev1/port2/line6',
-                           'finalV1':'Dev1/port1/line0',
-                           'finalV2':'Dev1/port1/line3',
-                           'threeV':'Dev1/port1/line2',
-                           'threeV2':'Dev1/port2/line3'},
+             'daqChannel':{'valve1':'Dev2/port0/line1',
+                           'spout1':spout},
              'inputs':{'speed':speed},
+             'logger':{'foldername':logger_name},
              'outputs':{},
              'flip_tunnel':{'sleep_time':0,
                             'stimulus_onset':12,
@@ -257,24 +260,70 @@ settings = {'texture_path': 'examples/textures/',
                             'io_module':'nidaq',
                             'length':length,
                             'margin_start':9,
-                            'reward-distance':9,
-                            'reward_length':{'manual':0.1,'assist':0.3, 'correct':0.3,'wrong':0.3},
+                            'reward_distance':20,
+                            'reward_length':{'manual':0.1,'assist':0.15, 'correct':0.15,'wrong':0.15},
                             'reward_prob':1,
                             'manual_reward_with_space':True,
                             'sound_dir':'examples/sounds/',
                             'sounds':{'0':'6kHz_tone.ogg'},
-                            'sound_at_A':True,
+                            'sound_at_A':False,
                             'reward_tone_length':1,
                             'modd1_odours':modd1_odours,
                             'odour_diffs':{'flush_same':1.5,'flush_other':0.75,'flush':1,'odour_overlap':0.05},
-                            'continuous_corridor':True,
-                            'landmarks':[a],
-                            'goals':[b],
-                            'assisted_goals':[assisted_goals]},
-                            
-            'landmarks_sequence': lms,
-            'goal_ids': ids,
+                            'continuous_corridor':True},
             'walls_sequence': collect_seq}
+else:
+    settings = {'texture_path': 'examples/textures/', 
+                'base_tunnel': {'speed_gain':mouse_settings['gain'],'eye_fov':{'fov':100,'fov_shift':57}, 'wall_model':'walls.egg', 'wall_length':4.5,'wall_spacing':9},
+                'card':{'size':size,'position':position}, 
+                'monitor':{'dual_monitor':True,'monitor1':{'width':monitor1_width},'monitor2':{'width':1920,'height':1080},'monitor3':{'width':1920,'height':1080}},
+                'sequence_task':{'rulename':rulename,'protocol':'olfactory_support_l1'},
+                'daqChannel':{'valve1':'Dev2/port0/line1',
+                            'spout1':spout,
+                            'odour0':'Dev1/port2/line4',
+                            'odour1':'Dev1/port0/line4',
+                            'odour2':'Dev1/port1/line7',
+                            'odour3':'Dev1/port0/line7',
+                            'odour4':'Dev1/port1/line6',
+                            'odour5':'Dev1/port0/line2',
+                            'odour6':'Dev1/port2/line5',
+                            'odour7':'Dev1/port0/line3',
+                            'odour8':'Dev1/port1/line4',
+                            'odour9':'Dev1/port0/line5',
+                            'mo1':'Dev1/port0/line0',
+                            'mo2':'Dev1/port2/line6',
+                            'fiveV':'Dev1/port2/line3',
+                            'finalV1':'Dev1/port1/line0',
+                            'finalV2':'Dev1/port1/line3',
+                            'threeV':daq_channel_3V1,
+                            'threeV2':daq_channel_3V2},
+                'inputs':{'speed':speed},
+                'logger':{'foldername':logger_name},
+                'outputs':{},
+                'flip_tunnel':{'sleep_time':0,
+                                'stimulus_onset':12,
+                                'neutral_texture':'grey.png',
+                                'io_module':'nidaq',
+                                'length':length,
+                                'margin_start':9,
+                                'reward_distance':9,
+                                'reward_length':{'manual':0.1,'assist':0.15, 'correct':0.15,'wrong':0.15},
+                                'reward_prob':1,
+                                'manual_reward_with_space':True,
+                                'sound_dir':'examples/sounds/',
+                                'sounds':{'0':'6kHz_tone.ogg'},
+                                'sound_at_A': False,
+                                'reward_tone_length':1,
+                                'modd1_odours':modd1_odours,
+                                'odour_diffs':{'flush_same':1.5,'flush_other':0.75,'flush':1,'odour_overlap':0.05},
+                                'continuous_corridor':True,
+                                'landmarks':[a],
+                                'goals':[b],
+                                'assisted_goals':[assisted_goals],
+                                'landmarks_sequence': lms},
+                                
+                'goal_ids': ids,
+                'walls_sequence': collect_seq}
 
 
 save_name = mouse + '_' + str(mouse_settings['date']) + '_' + str(mouse_settings['session']) + '.yaml'
@@ -282,3 +331,4 @@ save_name = mouse + '_' + str(mouse_settings['date']) + '_' + str(mouse_settings
 # yaml.default_flow_style = None
 with open(str(save_name), 'w') as yaml_file:
     yaml.dump(settings, yaml_file)
+

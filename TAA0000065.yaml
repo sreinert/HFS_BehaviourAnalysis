@@ -1,0 +1,14 @@
+mouse: 'TAA0000065'
+date: '250225'
+basepath: 'Z:\public\projects\AtApSuKuSaRe_20250129_HFScohort2\TAA0000065\ses-005_date-20250225_protocol-t1\behav\'
+session: 1
+setup: 2 # 1: training upstairs, 2: imaging 313
+stage: 3
+gain: 2
+speed_threshold: 7
+num_reps: 10
+landmark_ids: [0,1,2,3,4,5,6,7,8,9] #stages 3,4,6
+# landmark_ids: [7,2] #stage 5
+# goal_ids: [2] #stage 5 (just gas one goal stim) 
+# goal_ids: [2,4,6,8] #stage 62 (4 goal stim in ABAB pattern)
+goal_ids: [0,1,4,5] #stage 6 (4 goal stim in AABB pattern)

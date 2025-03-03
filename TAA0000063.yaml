@@ -1,6 +1,6 @@
-mouse: test
-date: '250218'
-basepath: 'D:\2024\sandra\'
+mouse: 'TAA0000063'
+date: '250219'
+basepath: 'Z:\public\projects\AtApSuKuSaRe_20250129_HFScohort2\TAA0000063\ses-004_date-20250219_protocol-t0\behav\'
 session: 1
 setup: 2 # 1: training upstairs, 2: imaging 313
 stage: 1
